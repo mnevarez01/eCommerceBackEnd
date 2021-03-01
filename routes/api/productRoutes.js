@@ -35,7 +35,7 @@ router.get('/:id', (res, req) => {
     ]
   })
     .then(product => res.statusCode(200).json(product))
-    .catch(err => res.status(500).json(err))
+    .catch(err => res.status(400).json(err))
 })
 
 router.post('/', (req, res) => {
@@ -51,12 +51,45 @@ router.post('/', (req, res) => {
         return ProductTag.bulkCreate(productTagidArr)
       }
     })
-    .catch(err => res.status(500).json(err))
+    .then(productIds => res.status(200).json(productIds))
+    .catch(err => res.status(400).json(err))
 })
 
 router.put('/:id', (req, res) => {
+  Product.update(req.body, {
+    where: {
+      id: req.params.id
+    }
+  })
+    .then(product => {
+      return ProductTag.findAll({
+        where: {
+          product_id: req.params.id
+        }
+      })
+    })
+    .then(productTag => {
+      const productTagIds = productTag.map(({ tag_id }) => tag_id);
+      const newTags = req.body.tagsIds.filter((tag_id) => !productTagIds.include(tag_id)).map((tag_id) => { return { product_id: req.params.id, tag_id } })
+
+      const tagsToRemove = productTag.filter(({ tag_id }) => !req.body.tagsIds.include(tags_id)).map(({ id }) => id)
+
+      return Promise.all([
+        ProductTag.destroy({
+          where:
+          {
+            id: tagsToRemove
+          }
+        }),
+        ProductTag.bulkCreate(newTags)
+      ])
+    })
+    .then(updatedProduct => res.json(updatedProduct))
+    .catch(err => res.status(400).json(err))
 
 })
+
+
 router.delete('/:id', (req, res) => {
   Product.destroy({
     where: {
@@ -64,7 +97,7 @@ router.delete('/:id', (req, res) => {
     }
   })
     .then(product => res.status(200).json(product))
-    .catch(err => res.status(500).json(err))
+    .catch(err => res.status(400).json(err))
 
 })
 
